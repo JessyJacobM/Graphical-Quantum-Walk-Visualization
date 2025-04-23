@@ -1,54 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale =1.0">
     <title>Graphical Quantum Walk Visualization</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             text-align: center;
             margin: 20px;
-        }
+        } 
         #graph {
-            width: 600px;
-            height: 600px;
-            margin: 20px auto;
-            border: 1px solid #ccc;
+            width :100%;
+            max-width: 720px;
+            height:720px;
+            overflow: auto;
+            margin:20px auto;
+            border:1px solid lightgray;
             position: relative;
             cursor: pointer;
         }
-        button, input {
-            padding: 10px;
-            font-size: 16px;
-            margin: 5px;
-            cursor: pointer;
-        }
-        .node {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
+        .node{
+            position:absolute;
+            width   :50px;
+            height  :50px;
+            border  :1px solid black;
+            display :flex;
+            font-size: 14px;
+            font-weight: bold;
+            align-items:center;
             justify-content: center;
             border-radius: 50%;
-            font-size: 14px;
             color: black;
-            font-weight: bold;
-            cursor: pointer;
-            border: 1px solid black;
+            cursor: pointer;           
         }
-        .start-node {
-            border: 5px solid black; 
+        .startnode{
+            border:5px solid black;
         }
-        .edge {
+        .edge{
             position: absolute;
             height: 5px;
             background-color: black;
             transform-origin: 0% 50%;
             z-index: -1;
+            cursor: pointer;
+        }     
+        button,input{
+            padding: 10px;
+            font-size: 16px;
+            margin: 5px;
             cursor: pointer;
         }
         .switch {
@@ -59,260 +61,317 @@
             margin: -2px;
             margin-top: 2px;
         }
-        .switch input {
-            display: none;
+        .switch input{
+            display:none;
         }
-        .slider {
+        .slider{
             position: absolute;
             cursor: pointer;
             inset: 0;
-            background-color: #ccc;
+            background-color: lightgray;
             transition: .4s;
             border-radius: 34px;
         }
-        .slider:before {
+        .slider:before{
             position: absolute;
             content: "";
             height: 20px;
-            width: 20px;
-            left: 4px;
+            width : 20px;
+            left  : 4px;
             bottom: 6px;
             background-color: white;
             transition: .4s;
             border-radius: 50%;
+        }  
+        input:checked + .slider{
+            background-color: darkgreen;
         }
-        input:checked + .slider {
-            background-color: #4CAF50; 
-        }
-        input:checked + .slider:before {
+        input:checked + .slider:before{
             transform: translateX(18px);
         }
         label{
             font-size: 16px;
-        }
+        }       
     </style>
 </head>
 <body>
-    <h1>Graphical Quantum Walk Visualization</h1>
-    <button title = "Click here, then click on the canvas to start adding nodes" onclick="enableAddNode()">Add Node</button>
-    <button title = "Click here, then click on the two nodes you want to add the edge between" onclick="enableAddEdge()">Add Edge</button>
-    <button title = "Click here, then click on the node you want to set as start node" onclick="enableSetStartNode()">Set Start Node</button>
-    <button title = "Click here, then select the node/edge you want to delete" onclick="enableDeleteNode()">Delete Node/Edge</button>
-    <button title = "Click here to generate Adjacency Matrix for the graph created" onclick="generateAdjMatrix()">Generate Adjacency Matrix</button>
-    <button title = "Click here to start the Quantum Walk Simulation" onclick="runQuantumWalk()">Run Quantum Walk</button>
-    <button title = "Click to stop the Simulation" onclick="stopQuantumWalk()">Stop Run</button>
-    <button title = "Click here to reset the graph" onclick="resetGraph()">Reset Graph</button>
-
-    <div>
+    <h1>Graphical Quantum Walk Visualization</h1>    
+    <button title = "Click here, then click on the canvas to start adding nodes" onclick="enableAddnode()">Add Node</button>
+    <button title = "Click here, then click on the two nodes you want to add the edge between" onclick="enableAddedge()">Add Edge</button>
+    <button title = "Click here, then click on the nodes or edges you want to delete" onclick="enableDelete()">Delete Node/Edge</button>
+    <button title = "Click here, then click on the node you want to set as start node" onclick="SetStartNode()"> Set Start Node</button>
+    <button title = "Click here to generate Adjacency Matrix for the graph created" onclick="generateAdjacencymatrix()"> Generate Adjacency Matrix</button>
+    <div> 
         <span>Unweighted</span>
         <label class="switch">
-          <input type="checkbox" id="weightToggle">
-          <span class="slider round"></span>
+            <input type="checkbox" id = "weight_flag">
+            <span class="slider round"></span>
         </label>
         <span>Weighted</span>
-      </div>
-      
-    <div id="graph"></div>
-    <div id="adj-matrix"></div>
-
+    </div>      
+    <button title = "Click here to begin the quantum walk" onclick="run()">Run</button>
+    <button title = "Click here to stop and view the Simulation" onclick="stop()">Stop</button>
+    <button title = "Click here to reset the graph and restart" onclick="reset()">Reset</button>
+    <div id="graph"></div>  
+    <div id="AdjMatrix"></div><span>Adjacency Matrix</span>
+    
     <script>
         let nodes = [];
         let edges = [];
-        let startNode = 0;
-        let selectedNodes = [];
+        let StartNode = null;
+        let SelectedNodes = [];
         let mode = null;
         let running = false;
         let step = 0;
-        let timeStep = 0;
-        let adjMatrix = [];
-        const colorScale = d3.scaleSequential(d3.interpolateRgb('white', 'green')).domain([0, 1]);
+        let timestep = 0;
+        let AdjMatrix = [];
+        const ColorScale = d3.scaleSequential(d3.interpolateRgb("white","green")).domain([0,1]);
 
-        function enableAddNode() { mode = 'addNode'; }
-        function enableAddEdge() { mode = 'addEdge'; selectedNodes = []; }
-        function enableSetStartNode() { mode = 'setStartNode'; }
-        function enableDeleteNode() { mode = 'delete'; }
+        function enableAddnode() {mode = 'AddNode';}
+        function enableAddedge() {mode = 'AddEdge'; SelectedNodes = [];}
+        function enableDelete()  {mode = 'delete';}
+        function SetStartNode() {mode = 'SetStartNode';}
+
+        function ReadComplex(string) {
+            string = string.trim().replace(/\s/g, ''); 
+            if (!string) return { real: 1, imag: 0 };
+
+            if (/^-?\d*\.?\d*$/.test(string)) {
+                return { real: parseFloat(string), imag: 0 };
+            }
+
+            if (/^-?\d*\.?\d*j$/.test(string)) {
+                const imag = parseFloat(string.replace('j', '')) || 0;
+                return { real: 0, imag };
+            }
+            const match = string.match(/^([-+]?\d*\.?\d*)([-+]\d*\.?\d*)j$/);
+            if (match) {
+                const real = parseFloat(match[1]) || 0;
+                const imag = parseFloat(match[2]) || 0;
+                return { real, imag };
+            }
+
+            throw new Error(`Invalid complex number: ${string}`);
+        }
         
-        function generateAdjMatrix() {
-            let nodeCount = nodes.length;
-            adjMatrix = Array.from({ length: nodeCount }, () => Array(nodeCount).fill(0));
-            edges.forEach(edge => {
-                const [node1, node2, weight] =edge;
-                adjMatrix[node1][node2] = weight;
-                adjMatrix[node2][node1] = weight;
-            });
-            document.getElementById("adj-matrix").innerText = JSON.stringify(adjMatrix);
-            return adjMatrix;
+        function FormatComplex({ real, imag }) {
+            if (imag === 0) {
+                return real.toString(); 
+            }
+            if (real === 0) {
+                return `${imag}j`; 
+            }
+            return `${real}${imag >= 0 ? '+' : ''}${imag}j`; 
         }
 
-        function renderGraph(probabilities = null) {
+        function generateAdjacencymatrix() {
+            let NodeCount = nodes.length;
+            AdjMatrix = Array.from({ length: NodeCount }, () => Array(NodeCount).fill({ real: 0, imag: 0 }));
+            edges.forEach(edge => {
+                const [node1, node2, weight] = edge;
+                try {
+                    const { real, imag } = ReadComplex(weight);
+                    AdjMatrix[node1][node2] = { real, imag };
+                    AdjMatrix[node2][node1] = { real, imag: -imag };
+                } catch (error) {
+                    console.error(error.message);
+                    alert(error.message);
+                }
+            });
+
+            let isHermitian = true;
+            for (let i = 0; i < NodeCount && isHermitian; i++) {
+                for (let j = 0; j < NodeCount; j++) {
+                    if (AdjMatrix[i][j].real !== AdjMatrix[j][i].real || AdjMatrix[i][j].imag !== -AdjMatrix[j][i].imag) {
+                        isHermitian = false;
+                        alert("Warning: Adjacency matrix is not Hermitian. Simulation may produce unexpected results.");
+                        break;
+                    }
+                }
+            }
+
+            const complexMatrix = AdjMatrix.map(row => row.map(c => FormatComplex(c)));
+            const matrixDisplay = AdjMatrix.map(row => row.map(c => FormatComplex(c)).join(', ')).join('\n');
+            document.getElementById("AdjMatrix").innerText = matrixDisplay;
+            return complexMatrix;
+        }
+
+        function render(probabilities = null){
             const graph = document.getElementById("graph");
             graph.innerHTML = "";
 
-            edges.forEach(([node1, node2,weight], index) => {
-                const nodeA = nodes.find(n => n.id === node1);
-                const nodeB = nodes.find(n => n.id === node2);
+            edges.forEach(([node1, node2, weight], index) =>{
+                const nodeA = nodes.find(node => node.id === node1);
+                const nodeB = nodes.find(node => node.id === node2);
                 if (!nodeA || !nodeB) return;
-                const label = document.createElement("div");
-                const edgeElement = document.createElement("div");
-                edgeElement.classList.add("edge");
-                edgeElement.dataset.index = index;
-
+                const Label = document.createElement("div");
+                const EdgeElement = document.createElement("div");
+                EdgeElement.classList.add("edge");
+                EdgeElement.dataset.index  = index;
+                EdgeElement.style.position = "absolute";
+                EdgeElement.style.zIndex   = "0";
+                EdgeElement.style.cursor   = "pointer";
+                Label.style.position       = "absolute";
+                Label.style.fontSize       = "14px";
+                Label.style.color          = "black";
+                Label.textContent          = `${weight}`;
+                
                 if (node1 === node2){
-                    const loopSize = 40;
-                    edgeElement.style.width = `${loopSize}px`;
-                    edgeElement.style.height = `${loopSize}px`;
-                    edgeElement.style.border = '2px solid black';
-                    edgeElement.style.borderRadius = "50%";
-                    edgeElement.style.position = "absolute";
-                    edgeElement.style.zIndex = "0";  
-                    edgeElement.style.backgroundColor = "white";
-                    edgeElement.style.cursor = "pointer";
-                    edgeElement.style.left = `${nodeA.x - 15}px`;
-                    edgeElement.style.top = `${nodeA.y - 25}px`;
-                    label.style.position = 'absolute';
-                    label.style.left = `${nodeA.x-18}px`;
-                    label.style.top = `${nodeA.y - 28}px`;
-                    label.style.fontSize = "14px";
-                    label.style.color = "black";
-                    label.textContent = `${weight}`;
-                    graph.appendChild(label);
+                    const LoopSize = 30;
+                    EdgeElement.style.width  = `${LoopSize}px`;
+                    EdgeElement.style.height = `${LoopSize}px`;
+                    EdgeElement.style.border = "2px solid black";
+                    EdgeElement.style.borderRadius = "50%";
+                    EdgeElement.style.backgroundColor = "transparent";
+                    EdgeElement.style.left   = `${nodeA.x + 10}px`;
+                    EdgeElement.style.top    = `${nodeA.y - 25}px`;                
+                    Label.style.left         = `${nodeA.x + 20}px`;
+                    Label.style.top          = `${nodeA.y - 40}px`;
+                    graph.appendChild(Label); 
                 } else{
                     const dx = nodeB.x - nodeA.x;
                     const dy = nodeB.y - nodeA.y;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-                    edgeElement.style.width = `${length}px`;
-                    edgeElement.style.left = `${nodeA.x + 25}px`;
-                    edgeElement.style.top = `${nodeA.y + 25}px`;
-                    edgeElement.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-                    edgeElement.style.position = "absolute";
-                    edgeElement.style.zIndex = "0";  
-                    edgeElement.style.backgroundColor = "black";
-                    edgeElement.style.cursor = "pointer";
-                    label.style.position = 'absolute';
-                    label.style.left = `${(nodeA.x + nodeB.x) / 2}px`;
-                    label.style.top = `${(nodeA.y + nodeB.y) / 2}px`;
-                    label.style.fontSize = "14px";
-                    label.style.color = "black";
-                    label.textContent = `${weight}`;
-                    graph.appendChild(label);
-                }                
-                edgeElement.onclick = () => confirm("Delete this edge?") && deleteEdge(index);
-                graph.appendChild(edgeElement);
+                    const length = Math.sqrt(dx*dx + dy*dy);
+                    EdgeElement.style.width = `${length}px`;
+                    EdgeElement.style.left  = `${nodeA.x + 25}px`;
+                    EdgeElement.style.top   = `${nodeA.y + 25}px`;
+                    EdgeElement.style.transform = `rotate(${Math.atan2(dy,dx)}rad)`;
+                    EdgeElement.style.backgroundColor = "black";
+                    Label.style.left     = `${(nodeA.x + nodeB.x)/2}px`;
+                    Label.style.top      = `${(nodeA.y + nodeB.y)/2}px`;
+                    graph.append(Label);
+                }
+                EdgeElement.onclick = () => EdgeClicked(index);
+                graph.appendChild(EdgeElement);
             });
 
             nodes.forEach((node) => {
-                const nodeElement = document.createElement("div");
-                nodeElement.classList.add("node");
-                nodeElement.style.left = `${node.x}px`;
-                nodeElement.style.top = `${node.y}px`;
-                nodeElement.style.position = "absolute";
-                nodeElement.style.zIndex = "1";
-
+                const NodeElement = document.createElement("div");
+                NodeElement.classList.add("node");
+                NodeElement.style.left    = `${node.x}px`;
+                NodeElement.style.top     = `${node.y}px`;
+                NodeElement.style.position= "absolute";
+                NodeElement.style.zIndex = "1";
+                
                 let prob = probabilities ? probabilities[node.id] : 0;
-                nodeElement.innerHTML = `${node.id}|    ${prob.toFixed(2)}`;
-                nodeElement.style.backgroundColor = colorScale(prob);
+                NodeElement.innerHTML = `${node.id} | ${prob.toFixed(2)}`;
+                NodeElement.style.backgroundColor = ColorScale(prob);
 
-                if (startNode === node.id) nodeElement.classList.add("start-node");
-                nodeElement.onclick = () => nodeClicked(node.id);
-                graph.appendChild(nodeElement);
+                if (StartNode === node.id) NodeElement.classList.add("startnode");
+                NodeElement.onclick = () => NodeClicked(node.id);
+                graph.appendChild(NodeElement);
             });
-            
-            let timeLabel = document.getElementById("time-label");
-            if (!timeLabel) {
-                timeLabel = document.createElement("div");
-                timeLabel.id = "time-label";
-                timeLabel.style.position = "absolute";
-                timeLabel.style.top = "10px";
-                timeLabel.style.left = "50%";
-                timeLabel.style.transform = "translateX(-50%)";
-                timeLabel.style.fontSize = "18px";
-                timeLabel.style.fontWeight = "bold";
-                graph.appendChild(timeLabel);
+
+            let TimeLabel = document.getElementById("TimeLabel");
+            if(!TimeLabel){
+                TimeLabel = document.createElement("div");
+                TimeLabel.id = "TimeLabel";
+                TimeLabel.style.position = "absolute";
+                TimeLabel.style.top  = "10px";
+                TimeLabel.style.left = "50%";
+                TimeLabel.style.transform = "translateX(-50%)";
+                TimeLabel.style.fontSize  = "18px";
+                TimeLabel.style.fontWeight="bold";
+                graph.appendChild(TimeLabel);
             }
-            timeLabel.innerText = `Time: ${timeStep.toFixed(1)}`;
+            TimeLabel.innerText = `Time: ${timestep.toFixed(1)}`;
         }
 
-        function nodeClicked(nodeId) {
-            if (mode === 'addEdge') {
-                if (selectedNodes.length < 2 ) {
-                    selectedNodes.push(nodeId);
-                    if (selectedNodes.length === 2) {
-                        const weighted = document.getElementById("weightToggle").checked;
-                        const weight = weighted ? parseFloat(prompt("Enter edge weight:", "1")) : 1;
-
-                        if (!isNaN(weight) && !edges.some(e => e[0] === selectedNodes[0] && e[1] === selectedNodes[1])) {
-                            edges.push([...selectedNodes, weight]);
+        function NodeClicked(nodeId){
+            if(mode === "AddEdge"){
+                if (SelectedNodes.length <2){
+                    SelectedNodes.push(nodeId);
+                    if (SelectedNodes.length === 2){
+                        const weighted = document.getElementById("weight_flag").checked;
+                        let weight = "1";
+                        if (weighted) {
+                            try {
+                                const complexWeight = ReadComplex(prompt("Enter complex edge weight (e.g., 1+2j, 0.5, -1j):", "1") || "1");
+                                weight = FormatComplex(complexWeight); 
+                            } catch (error) {
+                                console.error(error.message);
+                                alert("Invalid Input! Setting Weight to 1.");
+                            }
                         }
-                        renderGraph();
+
+                        if (weight && !edges.some(e => (e[0] === SelectedNodes[0] && e[1] === SelectedNodes[1]) || (e[0] === SelectedNodes[1] && e[1] === SelectedNodes[0]))) {
+                            edges.push([...SelectedNodes, weight]);
+                        }
+                        render();
                     }
                 }
-            } else if (mode === 'setStartNode') {
-                startNode = nodeId;
-                renderGraph();
-            } else if (mode === 'delete') {
-                deleteNode(nodeId);
+            } 
+            else if (mode === "SetStartNode"){ StartNode = nodeId; render();}
+            else if (mode === "delete"){
+                edges = edges.filter(edge => !edge.includes(nodeId));
+                nodes = nodes.filter(node => node.id !== nodeId);
+                render();
+            }                
+        }
+
+        function EdgeClicked(EdgeIndex){
+            if (mode === "delete"){
+                edges.splice(EdgeIndex, 1);
+                render();
             }
         }
 
-        function deleteNode(nodeId) {
-            edges = edges.filter(edge => !edge.includes(nodeId));
-            nodes = nodes.filter(node => node.id !== nodeId);
-            renderGraph();
-        }
-
-        function deleteEdge(edgeIndex) {
-            edges.splice(edgeIndex, 1);
-            renderGraph();
-        }
-
-        async function runQuantumWalk() {
-            adjMatrix = generateAdjMatrix();
+        async function run() {
+            if (StartNode === null){
+                alert("Please set the Start Node before running the simulation");
+                return;
+            }
+            AdjMatrix = generateAdjacencymatrix();
             if (!window.pyodide) window.pyodide = await loadPyodide();
-            await pyodide.loadPackage(["numpy", "scipy"]);
+            await pyodide.loadPackage(["numpy","scipy"]);
             running = true;
             step = 0;
 
-            async function computeAndAnimate() {
+            async function ComputeandAnimate() {
                 if (!running) return;
-                timeStep = step * 0.1;
-                let pythonCode = `
+                timestep = step *0.1;
+                let pythoncode = `
 import numpy as np, scipy.linalg, json
-A = np.array(${JSON.stringify(adjMatrix)})
-psi_0 = np.zeros(len(A)); psi_0[${startNode}] = 1
-U_t = scipy.linalg.expm(1j * A * ${timeStep})
+A = np.array(${JSON.stringify(AdjMatrix)}, dtype= complex)
+psi_0 = np.zeros(len(A))
+psi_0[${StartNode}] = 1
+U_t = scipy.linalg.expm(1j*A*${timestep})
 psi_t = U_t @ psi_0
-json.dumps(list(map(float, np.abs(psi_t) ** 2)))`;
+json.dumps(list(map(float, np.abs(psi_t)**2)))`;
                 try {
-                    let result = await pyodide.runPythonAsync(pythonCode);
+                    let result = await pyodide.runPythonAsync(pythoncode);
                     let probabilities = JSON.parse(result);
-                    renderGraph(probabilities);
+                    if (!Array.isArray(probabilities) || probabilities.length !== nodes.length) {
+                        throw new Error("Invalid probability output from simulation.");
+                    }
+                    render(probabilities);
                     step++;
-                    setTimeout(computeAndAnimate, 100);
-                } catch (error) {
-                    console.error("Python execution error:", error);
+                    setTimeout(ComputeandAnimate, 100);
+                }
+                catch(error) {
+                    console.error("Python execution Error:", error);
+                    alert("Error! Check console for the details")
                 }
             }
-            computeAndAnimate();
+            ComputeandAnimate();
         }
 
-        function stopQuantumWalk() { 
-            running = false; 
-        }
+        function stop(){ running = false;}
 
-        function resetGraph() {
+        function reset(){
             nodes = [];
             edges = [];
-            startNode = 0;
+            StartNode = null;
             running = false;
-            timeStep = 0;
-            renderGraph();
+            timestep = 0;
+            render();
         }
 
         document.getElementById("graph").addEventListener("click", function(event) {
-            if (mode === 'addNode') {
-                const graphRect = document.getElementById("graph").getBoundingClientRect();
-                nodes.push({ id: nodes.length, x: event.clientX - graphRect.left - 25, y: event.clientY - graphRect.top - 25 });
-                renderGraph();
+            if (mode === "AddNode"){
+                const Graph = document.getElementById("graph").getBoundingClientRect();
+                nodes.push({ id: nodes.length, x: event.clientX - Graph.left - 25, y: event.clientY - Graph.top - 25});
+                render();
             }
         });
     </script>
