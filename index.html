@@ -335,7 +335,7 @@ import numpy as np, scipy.linalg, json
 A = np.array(${JSON.stringify(AdjMatrix)}, dtype= complex)
 psi_0 = np.zeros(len(A))
 psi_0[${StartNode}] = 1
-U_t = scipy.linalg.expm(1j*A*${timestep})
+U_t = scipy.linalg.expm(-1j*A*${timestep})
 psi_t = U_t @ psi_0
 json.dumps(list(map(float, np.abs(psi_t)**2)))`;
                 try {
@@ -377,3 +377,4 @@ json.dumps(list(map(float, np.abs(psi_t)**2)))`;
     </script>
 </body>
 </html>
+
