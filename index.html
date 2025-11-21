@@ -172,7 +172,7 @@
                 try {
                     const { real, imag } = ReadComplex(weight);
                     AdjMatrix[node1][node2] = { real, imag };
-                    //AdjMatrix[node2][node1] = { real, imag: -imag };
+                    AdjMatrix[node2][node1] = { real, imag: -imag };
                 } catch (error) {
                     console.error(error.message);
                     alert(error.message);
@@ -377,5 +377,6 @@ json.dumps(list(map(float, np.abs(psi_t)**2)))`;
     </script>
 </body>
 </html>
+
 
 
